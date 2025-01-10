@@ -104,9 +104,16 @@ rose(pairorient(ic.species.final$D_Pectinfrons,0,0.2,sigma=20,unit="degree"),col
 rose(pairorient(ic.species.final$E_bradgatia,0,0.2,sigma=20,unit="degree"),col=col.order[5],main=names1[5])
 rose(pairorient(ic.species.final$H14_Fractofusus,0,0.2,sigma=40,unit="degree"),col=col.order[1],main=names1[20])
 
-#Mann Whitney tests
+#Example Isotropy figures
+par(mfrow=c(1,3))
+rose(pairorient(ppp.hyd,0,10,sigma=20),unit="degree",col="purple", main="Hydroid colony")#note range is different due to different unit and spatial scales of clustering because they are small.
+rose(pairorient(ppp.fw.long.pols,0,0.2,sigma=20),unit="degree",col="blue", main="Deep sea community: Slope")
+rose(pairorient(ppp.fw.dense.pols,0,0.2,sigma=20),unit="degree",col="blue", main="Deep sea community: Ridge")
+
+#Presence/Absence tests
 wilcox.test(res.ic[,5]~ic.bi2)
 wilcox.test(res.ic[,5]+res.ic[,8]~ic.bi2)
+
 
 #regression analyses
 summary(lm(res.ic.f[,14]~diff.tc.h[,3]+res.ic.f[,c(4,5,7,8)]))
