@@ -1,0 +1,138 @@
+---
+title: "diversity model fit"
+output: html_document
+date: "2024-10-04"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+```{r source_scripts}
+source("./diversityModelFunctions.R")
+```
+
+## Define priors
+
+We use a grid design with 100 communities (as in the original model paper Suzuki et al) to explore the parameter space. We define the priors for the parameters of the model. 
+
+We fix the number of species and communities:
+```{r}
+n_com<- 100 #number of communities (same as Suzuki et al.)
+n_sp<-127 #as per Boag et al. 2016
+```
+
+Prior ranges
+```{r}
+nu_range <- c(0, 0.1)
+aid_range <- c(5,6,7)
+wval_range <- c(0.1, 2)
+hval_range <- c(0.01, 10)
+```
+
+## Sample from the prior
+
+```{r}
+set.seed(123) # for repro
+n_sim <- 10000
+sim_res <- list(nu = runif(n_sim, nu_range[1], nu_range[2]),
+                   aid = sample(aid_range, n_sim, replace = TRUE),
+                   wval = runif(n_sim, wval_range[1], wval_range[2]),
+                   hval = exp(runif(n_sim, log(hval_range[1]), (hval_range[2]))),
+                alpha_sims = matrix(NA, nrow =100, ncol = n_sim))
+```
+
+```{r}
+for (i in 1:n_sim) {
+  sim_res$alpha_sims[, i] <- changing.values.a(nu = sim_res$nu[i], aid = sim_res$aid[i], wval = sim_res$wval[i], hval = sim_res$hval[i])
+}
+# create date in format for file name (including time)
+date=format(Sys.time(), "%Y%m%d%H%M") # removed time 
+saveRDS(sim_res, paste0("simulation_results", date, ".rds"))
+```
+
+
+## Compare simulations with observed
+```{r}
+sim_res <- readRDS("simulation_results202411201401.rds")
+
+
+```
+
+```{r}
+alpha_observed <- c(20, 36, 28)
+sim_res$alpha_sims[sim_res$alpha_sims == 0] <- NA
+alpha_sim_mean <- colMeans(sim_res$alpha_sims, na.rm = TRUE)
+```
+
+Count simulations where everything went extinct:
+```{r}
+sum(is.na(alpha_sim_mean))
+```
+
+Plot the distribution of the mean alpha diversity from the simulations
+```{r}
+hist(alpha_sim_mean)
+```
+```{r}
+library(abc)
+sim_param<- data.frame(nu=sim_res$nu, aid=sim_res$aid, wval=sim_res$wval, hval=sim_res$hval)
+avalon_rej <- abc::abc(target = 20,param = sim_param,sumstat = alpha_sim_mean, tol=0.5, method="neuralnet")
+```
+```{r}
+dimnames(avalon_rej$unadj.values)[2]
+```
+
+```{r}
+hist(avalon_rej$unadj.values[,4])
+
+```
+
+```{r}
+white_rej <- abc::abc(target = 36,param = sim_param,sumstat = alpha_sim_mean, tol=0.5, method="neuralnet")
+```
+```{r}
+nama_rej <- abc::abc(target = 28,param = sim_param,sumstat = alpha_sim_mean, tol=0.5, method="neuralnet")
+
+
+```
+
+Rejection distributions for the three periods
+```{r, fig.width=4, fig.height=20}}
+par(mfrow=c(3,1))
+i <- 3
+hist(avalon_rej$unadj.values[,i], breaks=20)
+hist(white_rej$unadj.values[,i], breaks=20)
+hist(nama_rej$unadj.values[,i], breaks=20)
+
+```
+
+```{r, fig.width=4, fig.height=20}}
+par(mfrow=c(3,4))
+i <- 3
+hist(avalon_rej, breaks=20, ask=FALSE)
+hist(white_rej, breaks=20, ask=FALSE)
+hist(nama_rej, breaks=20, ask=FALSE)
+
+```
+
+Summary of the posteriors
+```{r}
+summary(avalon_rej)
+summary(white_rej)
+summary(nama_rej)
+
+
+```
+
+Now plot the posteriors as densities:
+```{r}
+#head(avalon_rej$adj.values)
+par(mfrow=c(3,1))
+plot(density(avalon_rej$adj.values[,3]), main="Avalon", xlab="alpha", ylab="Density")
+plot(density(white_rej$adj.values[,3]), main="White Sea", xlab="alpha", ylab="Density")
+plot(density(nama_rej$adj.values[,3]), main="Nama", xlab="alpha", ylab="Density")
+
+```
+
